@@ -1,0 +1,63 @@
+name: Java CI with Maven
+
+on:
+  push:
+    branches: 
+      - main
+      - 'feature/**'  # Étape 2.6 : Déclenche sur main et les branches feature
+  pull_request:
+    branches: 
+      - main
+      - 'feature/**'
+
+# Permissions nécessaires pour éviter l'erreur 403 lors de la publication des tests
+permissions:
+  contents: read
+  issues: write
+  checks: write
+  pull-requests: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Étape 2.2 : Installation de Java 8
+      - name: Set up JDK 8
+        uses: actions/setup-java@v2
+        with:
+          java-version: '8'
+          distribution: 'adopt'
+
+      # Étape 2.2 : Compilation de l'application avec Maven
+      - name: Build with Maven
+        run: mvn --batch-mode --update-snapshots package
+
+      # Étape 2.3 : Publication des résultats de tests unitaires
+      - name: Publish Unit Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        if: always()
+        with:
+          files: target/surefire-reports/*.xml
+
+      # Étape 2.4 : Publication de l'artefact (le fichier JAR)
+      - name: Upload a Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: my-app-1.0
+          path: target/*
+
+      # Étape 2.5 : Installation de Docker sur l'agent
+      - name: Install Docker
+        uses: docker/setup-buildx-action@v1
+        id: buildx
+        with:
+          install: true
+
+      # Étape 2.5 : Construction de l'image Docker
+      # Note : Le Dockerfile doit être à la racine du projet
+      - name: Docker build
+        run: |
+          docker build .
